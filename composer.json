@@ -2,7 +2,7 @@
     "name": "matin-utils/easy-socket",
     "description": "a solution for soket programming",
     "type": "library",
-    "license": "Matin Int Group Licence",
+    "license": "MIT",
     "authors": [
         {
             "name": "aghaie",
