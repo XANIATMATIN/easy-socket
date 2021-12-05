@@ -2,7 +2,6 @@
 
 namespace MatinUtils\EasySocket;
 
-use App\QE\Hooks\Handler;
 use Exception;
 
 class Server
@@ -132,14 +131,17 @@ class Server
 
     public function registerStaticHooks()
     {
-        if (class_exists(Handler::class)) {
-            $handler = new Handler;
+        try {
+            $hookHandlerClass = 'App\\' . ucfirst(config('easySocket.defaultProtocol', 'http')) . '\Hooks\Handler';
+            $handler = new $hookHandlerClass;
             $userHooks = $handler->userHooks();
             foreach ($userHooks as $command => $functions) {
                 foreach ($functions as $function) {
                     Hooks::register($command, $function);
                 }
             }
+        } catch (\Throwable $th) {
+            app('log')->error('Hook handler unavailable');
         }
     }
 
