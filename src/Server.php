@@ -161,13 +161,12 @@ class Server
         $stack = '';
         try {
             do {
-                $input = socket_read($client, 1024);
+                $input = socket_read($client, 2048);
                 $stack .= $input;
-            } while (strlen($input) == 1024);
+            } while (strlen($input) == 2048);
         } catch (\Throwable $th) {
             app('log')->error('can not read socket. ',$th->getMessage());
         }
-
         return $stack ?? '';
     }
 
