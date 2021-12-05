@@ -2,7 +2,7 @@
 
 namespace MatinUtils\EasySocket;
 
-use App\EasySocket\Hooks\Handler;
+use App\QE\Hooks\Handler;
 
 class Client
 {
@@ -10,7 +10,7 @@ class Client
     protected $clientSockets = [];
     public $isConnected = false;
 
-    public function __construct(string $host,int $port = 0)
+    public function __construct(string $host, int $port = 0)
     {
         $this->host = $host;
         $this->port = $port;
@@ -58,16 +58,6 @@ class Client
         }
     }
 
-    public function notLive($data = '') /// for lack of a better word
-    {
-        if ($this->isConnected) {
-            $data .= "\0";
-            return $this->writeOnSocket($data);
-        } else {
-            return false;
-        }
-    }
-
     protected function createSocket()
     {
         error_reporting(~E_NOTICE);
@@ -93,7 +83,7 @@ class Client
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
-            app('log')->error("Couldn't connect socket: [$errorcode] $errormsg ");
+            app('log')->error("Couldn't connect socket ($this->host): [$errorcode] $errormsg ");
             return $this->isConnected  = false;
         }
     }
@@ -101,6 +91,7 @@ class Client
     public function closeSocket()
     {
         socket_close($this->masterSocket);
+        $this->isConnected = false;
     }
 
     protected function writeOnSocket($data)
@@ -117,6 +108,21 @@ class Client
             Hooks::trigger('writeFailed', "Can not write on socket : " . $th->getMessage(), $data);
             $this->isConnected = false;
         }
+    }
+
+    protected function readSocket()
+    {
+        $stack = '';
+        try {
+            do {
+                $input = socket_read($this->masterSocket, 1024);
+                $stack .= $input;
+            } while (strlen($input) == 1024);
+        } catch (\Throwable $th) {
+            app('log')->error('can not read socket. '. $th->getMessage());
+        }
+
+        return $stack ?? '';
     }
 
     public function registerStaticHooks()
