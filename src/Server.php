@@ -2,23 +2,22 @@
 
 namespace MatinUtils\EasySocket;
 
-use App\EasySocket\Hooks\Handler;
+use App\QE\Hooks\Handler;
+use Exception;
 
 class Server
 {
     protected $host, $port, $interval, $masterSocket, $maxClientNumber, $usingIpProtocol;
-    protected $clientSockets = [];
-    protected $routing;
+    protected $clients = [];
 
     public function __construct()
     {
         $this->host = config('easySocket.host', '/tmp/server.sock');
         $this->port = config('easySocket.port', 0);
         $this->usingIpProtocol = !empty($this->port);
-        $this->interval = config('easySocket.interval', 0);
+        $this->interval = config('easySocket.interval', null);
         $this->maxClientNumber = config('easySocket.maxClientNumber', SOMAXCONN);
 
-        $this->routing = new Routing;
         $this->registerStaticHooks();
 
         error_reporting(~E_NOTICE);
@@ -32,12 +31,13 @@ class Server
                 if ($this->socketListen()) {
                     ///> socket is now ready, waiting for connections
 
+
                     while (true) {
                         ///> re-filling the read array with the existing sockets
                         $read = [];
                         $read[0] = $this->masterSocket;
-                        foreach ($this->clientSockets as $client) {
-                            $read[] = $client;
+                        foreach ($this->clients as $client) {
+                            $read[] = $client->getSocket();
                         }
 
                         ///> waiting for any action on the socket, whether it's new client connecting or an existing client sending sth
@@ -52,28 +52,25 @@ class Server
 
                         //if read contains the master socket, then a new connection has come in
                         if (in_array($this->masterSocket, $read)) {
-                            if (count($this->clientSockets) >= $this->maxClientNumber) {
+                            if (count($this->clients) >= $this->maxClientNumber) {
                                 app('log')->error("New connection blocked. Max client capacity reached");
                                 ///> i accept then close the coonection, there are probably better ways
                                 $newClient = socket_accept($this->masterSocket);
                                 socket_close($newClient);
                                 continue;
                             } else {
-                                $this->clientSockets[] = $newClient = socket_accept($this->masterSocket);
-                                Hooks::trigger('newClient', $newClient, count($this->clientSockets));
+                                $protocol = $this->protocolFactoty(config('easySocket.defaultProtocol', 'http'), socket_accept($this->masterSocket));
+                                $this->clients[] = $protocol;
+                                // Hooks::trigger('newClient', $protocol, count($this->clients));
                             }
                         }
 
                         ///> receive clients' messages
-                        foreach ($this->clientSockets as $index => $client) {
-                            if (in_array($client, $read)) {
-                                $input = $this->readSocket($client);
-                                if ($input == null) {
-                                    socket_close($client);
-                                    unset($this->clientSockets[$index]);
-                                } else {
-                                    Hooks::trigger('messageReceived', $client, trim($input));
-                                    $this->routing->handle(trim($input), $client);
+                        foreach ($this->clients as $index => $client) {
+                            if (in_array($client->getSocket(), $read)) {
+                                $client->read();
+                                if (!$client->status()) {
+                                    unset($this->clients[$index]);
                                 }
                             }
                         }
@@ -105,7 +102,6 @@ class Server
             if (!$this->usingIpProtocol) {
                 chmod($this->host, 0777);
             }
-            dump('Socket successfully binded to: ' . $this->host . (!empty($this->port) ? " on port $this->port" : ''));
             app('log')->info('Socket successfully binded to: ' . $this->host . ($this->usingIpProtocol ? " on port $this->port" : ''));
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
@@ -118,7 +114,7 @@ class Server
                 $this->bindSocket();
             }
         }
-            return true;
+        return true;
     }
 
     protected function socketListen()
@@ -147,32 +143,19 @@ class Server
         }
     }
 
-    protected function writeOnSocket($client, $message)
-    {
-        try {
-            socket_write($client, $message);
-        } catch (\Throwable $th) {
-            app('log')->error('catch server wrote '.$th->getMessage());
-        }
-    }
-
-    protected function readSocket($client)
-    {
-        $stack = '';
-        try {
-            do {
-                $input = socket_read($client, 1024);
-                $stack .= $input;
-            } while (strlen($input) == 1024);
-        } catch (\Throwable $th) {
-            app('log')->error('can not read socket. ',$th->getMessage());
-        }
-
-        return $stack ?? '';
-    }
-
     public function closeSocket()
     {
         socket_close($this->masterSocket);
+    }
+
+    public function protocolFactoty($protocolAlias, $clientSocket)
+    {
+        $class = config("easySocket.protocols.$protocolAlias");
+
+        if (empty($class)) {
+            throw new Exception("No Protocol", 1);
+        }
+
+        return new $class($clientSocket);
     }
 }

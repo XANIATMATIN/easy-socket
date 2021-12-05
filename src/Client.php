@@ -2,7 +2,7 @@
 
 namespace MatinUtils\EasySocket;
 
-use App\EasySocket\Hooks\Handler;
+use App\QE\Hooks\Handler;
 
 class Client
 {
