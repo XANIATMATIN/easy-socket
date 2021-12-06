@@ -2,7 +2,6 @@
 
 namespace MatinUtils\EasySocket;
 
-use App\EasySocket\Hooks\Handler;
 
 class Client
 {
@@ -15,7 +14,7 @@ class Client
         $this->host = $host;
         $this->port = $port;
         $this->usingIpProtocol = !empty($this->port);
-        $this->registerStaticHooks();
+        // $this->registerStaticHooks();
 
         if (!$this->isConnected) {
             if ($this->createSocket()) {
