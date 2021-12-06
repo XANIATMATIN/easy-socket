@@ -2,7 +2,7 @@
 
 namespace MatinUtils\EasySocket;
 
-use App\QE\Hooks\Handler;
+use App\EasySocket\Hooks\Handler;
 
 class Client
 {
@@ -100,13 +100,15 @@ class Client
             if (!socket_write($this->masterSocket, $data, strlen($data))) {
                 $errorcode = socket_last_error();
                 $errormsg = socket_strerror($errorcode);
+                app('log')->error("Can not write on socket : [$errorcode] $errormsg", $data);
                 Hooks::trigger('writeFailed', "Can not write on socket : [$errorcode] $errormsg", $data);
                 $this->isConnected = false;
             }
             return $this->isConnected;
         } catch (\Throwable $th) {
-            Hooks::trigger('writeFailed', "Can not write on socket : " . $th->getMessage(), $data);
             $this->isConnected = false;
+            app('log')->error("Can not write on socket : " . $th->getMessage());
+            Hooks::trigger('writeFailed', "Can not write on socket : " . $th->getMessage(), $data);
         }
     }
 
@@ -119,7 +121,7 @@ class Client
                 $stack .= $input;
             } while (strlen($input) == 1024);
         } catch (\Throwable $th) {
-            app('log')->error('can not read socket. '. $th->getMessage());
+            app('log')->error('can not read socket. ' . $th->getMessage());
         }
 
         return $stack ?? '';
