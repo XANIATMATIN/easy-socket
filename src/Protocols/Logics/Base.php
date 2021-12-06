@@ -30,34 +30,39 @@ abstract class Base
                 return true;
             }
             $this->buffer .= $input;
+
             $length = strlen($input);
             if ($input[$length - 1] != "\0") {
                 return false;
             }
             return $this->compeleteSection();
         } catch (\Throwable $th) {
-            app('log')->error('can not read socket. ' . $th->getMessage());
+            app('log')->error('Socket Read Has Error. ' . $th->getMessage());
+            app('log')->error($th->getTraceAsString());
             return true;
         }
     }
 
     protected function compeleteSection()
     {
-        $request = $this->getRequest($this->buffer);
-        $this->buffer = '';
+        try {
+            $request = $this->getRequest($this->buffer);
+            $this->buffer = '';
 
-        $response = $this->getResponse();
-        $this->routing->handle($request, $response);
+            $response = $this->getResponse();
+            $this->routing->handle($request, $response);
+            if ($response->returnable()) {
+                $this->writeOnSocket($this->socket, $response->getOutput());
+            }
 
-        if ($response->returnable()) {
-            $this->writeOnSocket($this->socket, $response->getOutput());
+            if ($response->closeConnection() || !$this->continuous) {
+                $this->close();
+            }
+
+            return true;
+        } catch (\Throwable $th) {
+            throw $th;
         }
-
-        if ($response->closeConnection() || !$this->continuous) {
-            $this->close();
-        }
-
-        return true;
     }
 
     protected function writeOnSocket($client, $message)
@@ -65,7 +70,7 @@ abstract class Base
         try {
             socket_write($client, $message);
         } catch (\Throwable $th) {
-            app('log')->error('writeOnSocket failed: ' . $th->getMessage());
+            throw $th;
         }
     }
 
