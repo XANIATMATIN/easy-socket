@@ -14,7 +14,7 @@ class Server
         $this->host = config('easySocket.host', '/tmp/server.sock');
         $this->port = config('easySocket.port', 0);
         $this->usingIpProtocol = !empty($this->port);
-        $this->interval = config('easySocket.interval', null);
+        $this->interval = config('easySocket.port', null);
         $this->maxClientNumber = config('easySocket.maxClientNumber', SOMAXCONN);
 
         $this->registerStaticHooks();
@@ -65,14 +65,23 @@ class Server
                         }
 
                         ///> receive clients' messages
+                        $queue = [];
                         foreach ($this->clients as $index => $client) {
                             if (in_array($client->getSocket(), $read)) {
-                                $client->read();
-                                if (!$client->status()) {
-                                    unset($this->clients[$index]);
-                                }
+                                $queue[$index] = $client;
                             }
                         }
+
+                        do {
+                            foreach ($queue as $index => $client) {
+                                if ($client->read()) {
+                                    if (!$client->status()) {
+                                        unset($this->clients[$index]);
+                                    }
+                                    unset($queue[$index]);
+                                }
+                            }
+                        } while (!empty($queue));
                     }
                     $this->closeSocket();
                 }

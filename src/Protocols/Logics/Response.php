@@ -6,4 +6,5 @@ interface Response
 {
     public function getOutput() : string;
     public function closeConnection() : bool;
+    public function returnable() : bool;
 }

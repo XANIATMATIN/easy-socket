@@ -5,7 +5,7 @@ namespace MatinUtils\EasySocket\Protocols\Logics;
 
 abstract class Base
 {
-    protected $socket, $routing, $continuous = false;
+    protected $socket, $routing, $continuous = false, $buffer = '';
 
     public function __construct($socket)
     {
@@ -23,41 +23,41 @@ abstract class Base
 
     public function read()
     {
-        $input = $this->readSocket();
-
-        if (($input == null && !$this->continuous)) {
-            return $this->close();
-        }
-
-        if ($input != null) {
-            app('log')->info($input);
-            $request = $this->getRequest($input);
-            $response = $this->getResponse();
-            $this->routing->handle($request, $response);
-            $this->writeOnSocket($this->socket, $response->getOutput());
-            if ($response->closeConnection()) {
-                return $this->close();
+        try {
+            $input = socket_read($this->socket, 2048);
+            if (empty($input)) {
+                $this->close();
+                return true;
             }
-        }
-
-        if (!$this->continuous) {
-            return $this->close();
+            $this->buffer .= $input;
+            $length = strlen($input);
+            if ($input[$length - 1] != "\0") {
+                return false;
+            }
+            return $this->compeleteSection();
+        } catch (\Throwable $th) {
+            app('log')->error('can not read socket. ' . $th->getMessage());
+            return true;
         }
     }
 
-    protected function readSocket()
+    protected function compeleteSection()
     {
-        $stack = '';
-        try {
-            do {
-                $input = socket_read($this->socket, 2048);
-                $stack .= $input;
-            } while (strlen($input) == 2048);
-        } catch (\Throwable $th) {
-            app('log')->error('can not read socket. ', $th->getMessage());
+        $request = $this->getRequest($this->buffer);
+        $this->buffer = '';
+
+        $response = $this->getResponse();
+        $this->routing->handle($request, $response);
+
+        if ($response->returnable()) {
+            $this->writeOnSocket($this->socket, $response->getOutput());
         }
 
-        return $stack ?? '';
+        if ($response->closeConnection() || !$this->continuous) {
+            $this->close();
+        }
+
+        return true;
     }
 
     protected function writeOnSocket($client, $message)
