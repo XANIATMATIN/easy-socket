@@ -5,7 +5,7 @@ namespace MatinUtils\EasySocket\Protocols\Logics;
 
 abstract class Base
 {
-    protected $socket, $routing, $continuous = false, $buffer = '';
+    protected $status = true, $socket, $routing, $continuous = false, $buffer = '';
 
     public function __construct($socket)
     {
@@ -77,10 +77,11 @@ abstract class Base
     public function close()
     {
         socket_close($this->socket);
+        $this->status = false;
     }
 
     public function status()
     {
-        return get_resource_type($this->socket) == 'Socket';
+        return $this->status;
     }
 }

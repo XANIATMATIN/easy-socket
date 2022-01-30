@@ -115,7 +115,7 @@ class Server
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
             if ($this->usingIpProtocol || (strpos($errormsg, 'Address already in use') === false)) {
-                app('log')->error("Couldn't bind socket: [$errorcode] $errormsg ");
+                app('log')->error("Couldn't bind socket ($this->host): [$errorcode] $errormsg. ". $th->getMessage());
                 return false;
             } else {
                 unlink($this->host);
