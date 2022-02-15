@@ -64,7 +64,7 @@ class Client
         try {
             $domain = $this->usingIpProtocol ? AF_INET : AF_UNIX;
             $this->masterSocket = socket_create($domain, SOCK_STREAM, 0);
-            app('log')->info('Created Socket');
+            // app('log')->info('Created Socket');
             return true;
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
