@@ -64,6 +64,7 @@ class Client
         try {
             $domain = $this->usingIpProtocol ? AF_INET : AF_UNIX;
             $this->masterSocket = socket_create($domain, SOCK_STREAM, 0);
+            app('log')->info('Created Socket');
             return true;
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
@@ -77,7 +78,7 @@ class Client
     {
         try {
             $this->isConnected  = socket_connect($this->masterSocket, $this->host, $this->port);
-            // app('log')->info('Socket successfully connected to: ' . $this->host . (!empty($this->port) ? " on port $this->port" : ''));
+            app('log')->info('Socket successfully connected to: ' . $this->host . (!empty($this->port) ? " on port $this->port" : ''));
             return $this->isConnected;
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();

@@ -17,6 +17,11 @@ class ServiceProvider extends BaseServiceProvider
             $archiver = new EasySocket;
             return $archiver;
         });
+
+        $storageFolder = base_path('bootstrap/easySocket');
+        if (!file_exists($storageFolder)) {
+            mkdir($storageFolder, 0777);
+        }
     }
 
     /**
