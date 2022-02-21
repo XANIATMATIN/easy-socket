@@ -27,7 +27,7 @@ abstract class Base
             $input = socket_read($this->socket, 2048);
             if (empty($input)) {
                 $this->close();
-                return false;
+                return true;
             }
             $this->buffer .= $input;
 
@@ -35,13 +35,33 @@ abstract class Base
             if ($input[$length - 1] != "\0") {
                 return false;
             }
-            $data = $this->buffer;
-            $this->buffer = '';
-            return $data;
+            return $this->compeleteSection();
         } catch (\Throwable $th) {
             app('log')->error('Socket Read Has Error. ' . $th->getMessage());
             app('log')->error($th->getTraceAsString());
             return true;
+        }
+    }
+
+    protected function compeleteSection()
+    {
+        try {
+            $request = $this->getRequest($this->buffer);
+            $this->buffer = '';
+
+            $response = $this->getResponse();
+            $this->routing->handle($request, $response);
+            if ($response->returnable()) {
+                $this->writeOnSocket($this->socket, $response->getOutput());
+            }
+
+            if ($response->closeConnection() || !$this->continuous) {
+                $this->close();
+            }
+
+            return true;
+        } catch (\Throwable $th) {
+            throw $th;
         }
     }
 
