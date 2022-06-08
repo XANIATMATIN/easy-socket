@@ -100,7 +100,8 @@ class Client
             if (!socket_write($this->masterSocket, $data, strlen($data))) {
                 $errorcode = socket_last_error();
                 $errormsg = socket_strerror($errorcode);
-                app('log')->error("Can not write on socket : [$errorcode] $errormsg", $data);
+                app('log')->error("Can not write on socket : [$errorcode] $errormsg");
+                app('log')->error($data);
                 Hooks::trigger('writeFailed', "Can not write on socket : [$errorcode] $errormsg", $data);
                 $this->isConnected = false;
             }
