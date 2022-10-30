@@ -66,6 +66,7 @@ class Client
                 $errorcode = socket_last_error();
                 $errormsg = socket_strerror($errorcode);
                 app('log')->error("Can not write on socket : [$errorcode] $errormsg");
+                app('log')->error(__FILE__ . ':' . __LINE__);
                 app('log')->error($data);
                 Hooks::trigger('writeFailed', "Can not write on socket : [$errorcode] $errormsg", $data);
                 $this->isConnected = false;
@@ -74,6 +75,8 @@ class Client
         } catch (\Throwable $th) {
             $this->isConnected = false;
             app('log')->error("Can not write on socket : " . $th->getMessage());
+            app('log')->error(__FILE__ . ':' . __LINE__);
+            app('log')->error($data);
             Hooks::trigger('writeFailed', "Can not write on socket : " . $th->getMessage(), $data);
         }
     }
@@ -90,6 +93,16 @@ class Client
             app('log')->error('can not read socket. ' . $th->getMessage());
         }
 
+        $stack = $this->cleanData($stack);
         return $stack ?? '';
+    }
+
+    protected function cleanData($input)
+    {
+        $length = strlen($input);
+        if (($input[$length - 1] ?? "") == "\0") {
+            $input = substr($input, 0, -1);
+        }
+        return $input;
     }
 }
