@@ -3,7 +3,7 @@
 namespace MatinUtils\EasySocket;
 
 
-class ClientHandler
+class Consumer
 {
     protected $status = true, $socket, $continuous = false, $buffer = '';
 
@@ -43,11 +43,20 @@ class ClientHandler
 
     public function writeOnSocket($message)
     {
+        $message = $this->prepareMessage($message);
         try {
             socket_write($this->socket, $message);
         } catch (\Throwable $th) {
             throw $th;
         }
+    }
+
+    protected function prepareMessage($message)
+    {
+        if (($message[strlen($message) - 1] ?? '') != "\0") { ///> the message might already have /0
+            $message .= "\0";
+        }
+        return $message;
     }
 
     public function close()

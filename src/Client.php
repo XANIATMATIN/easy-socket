@@ -14,45 +14,10 @@ class Client
         $this->host = $host;
         $this->port = $port;
         $this->usingIpProtocol = !empty($this->port);
-        // $this->registerStaticHooks();
 
         if (!$this->isConnected) {
             if ($this->createSocket()) {
                 $this->connectSocket();
-            }
-        }
-    }
-
-    public function live()
-    {
-        while (true) {
-
-            try {
-                $input = socket_read($this->masterSocket, 1024);
-
-                if ($input === 'close') {
-                    break;
-                } else {
-                    dump($input);
-
-                    $message = readline();
-                    if ($message === 'exit') {
-                        break;
-                    }
-
-                    try {
-                        socket_write($this->masterSocket, $message, strlen($message));
-                    } catch (\Throwable $th) {
-                        $errorcode = socket_last_error();
-                        $errormsg = socket_strerror($errorcode);
-                        dump("Can not send message : [$errorcode] $errormsg");
-                        break;
-                    }
-                }
-            } catch (\Throwable $th) {
-                $errorcode = socket_last_error();
-                $errormsg = socket_strerror($errorcode);
-                dump("Can not read socket : [$errorcode] $errormsg");
             }
         }
     }
@@ -120,24 +85,11 @@ class Client
             do {
                 $input = socket_read($this->masterSocket, 1024);
                 $stack .= $input;
-            } while (strlen($input) == 1024);
+            } while (($input[strlen($input) - 1] ?? "\0") != "\0");
         } catch (\Throwable $th) {
             app('log')->error('can not read socket. ' . $th->getMessage());
         }
 
         return $stack ?? '';
-    }
-
-    public function registerStaticHooks()
-    {
-        if (class_exists(Handler::class)) {
-            $handler = new Handler;
-            $userHooks = $handler->userHooks();
-            foreach ($userHooks as $command => $functions) {
-                foreach ($functions as $function) {
-                    Hooks::register($command, $function);
-                }
-            }
-        }
     }
 }
