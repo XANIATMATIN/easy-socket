@@ -68,10 +68,19 @@ abstract class Base
     protected function writeOnSocket($client, $message)
     {
         try {
+            $message = $this->prepareMessage($message);
             socket_write($client, $message);
         } catch (\Throwable $th) {
             throw $th;
         }
+    }
+
+    protected function prepareMessage($message)
+    {
+        if (($message[strlen($message) - 1] ?? '') != "\0") { ///> the message might already have /0
+            $message .= "\0";
+        }
+        return $message;
     }
 
     public function close()
