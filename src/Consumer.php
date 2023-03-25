@@ -5,7 +5,7 @@ namespace MatinUtils\EasySocket;
 
 class Consumer
 {
-    protected $status = true, $socket, $continuous = false, $buffer = '';
+    protected $status = true, $socket, $continuous = false, $buffer = '', $temp = '';
 
     public function __construct($socket)
     {
@@ -33,6 +33,10 @@ class Consumer
             }
             $data = $this->buffer;
             $this->buffer = '';
+            if ($this->buffer == 'idle' . "\0" . 'idle') {
+                app('log')->info($input);
+                app('log')->info($this->temp);
+            }
             return $data;
         } catch (\Throwable $th) {
             app('log')->error('Socket Read Has Error. ' . $th->getMessage());
@@ -44,6 +48,7 @@ class Consumer
     public function writeOnSocket($message)
     {
         $message = $this->prepareMessage($message);
+        $this->temp = $message;
         try {
             socket_write($this->socket, $message);
         } catch (\Throwable $th) {

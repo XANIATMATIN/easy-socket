@@ -1,21 +1,19 @@
 <?php
 
-function serveAndListen(string $portName)
+function serveAndListen(string $port)
 {
-    $socketFolder = base_path('bootstrap/easySocket');
-    
-    try {
-        $newPort = socket_create(AF_UNIX, SOCK_STREAM, 0);
-        socket_bind($newPort, "$socketFolder/$portName.sock");
-    } catch (\Throwable $th) {
-        if (!strstr($th->getMessage(), 'already in use')) {
-            app('log')->error($th->getMessage());
-            return;
-        }
-        unlink("$socketFolder/$portName.sock");
-        socket_bind($newPort, "$socketFolder/$portName.sock");
+    if (is_numeric($port)) {
+        return app('easy-socket')->serveOnPort($port);
+    } else {
+        return app('easy-socket')->serveOnFile($port);
     }
-    chmod("$socketFolder/$portName.sock", 0777);
-    socket_listen($newPort, 10);
-    return $newPort;
+}
+
+function connectToSocket(string $port)
+{
+    if (is_numeric($port)) {
+        return app('easy-socket')->connectToPort($port);
+    } else {
+        return app('easy-socket')->connectToFile($port);
+    }
 }
