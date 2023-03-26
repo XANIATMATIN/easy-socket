@@ -11,10 +11,16 @@ class Server
 
     public function __construct()
     {
-        $this->host = config('easySocket.host', '/tmp/server.sock');
-        $this->port = config('easySocket.port', 0);
-        $this->usingIpProtocol = !empty($this->port);
-        $this->interval = config('easySocket.port', null);
+        $port = config('easySocket.port', 0);
+        $this->usingIpProtocol = !empty($port) && is_numeric($port);
+        if ($this->usingIpProtocol) {
+            $this->host = config('easySocket.host', '127.0.0.1');
+            $this->port = $port;
+        } else {
+            $this->host = base_path(config('easySocket.filePath', "bootstrap/easySocket")) . "/$port.sock";
+            $this->port = 0;
+        }
+        $this->interval = config('easySocket.interval', null);
         $this->maxClientNumber = config('easySocket.maxClientNumber', SOMAXCONN);
 
         $this->registerStaticHooks();
@@ -45,7 +51,7 @@ class Server
                         } catch (\Throwable $th) {
                             $errorcode = socket_last_error();
                             $errormsg = socket_strerror($errorcode);
-                            app('log')->error("Socket select failed : [$errorcode] $errormsg");
+                            app('log')->error("Socket select failed : [$errorcode] $errormsg. " . $th->getMessage());
                         }
 
 
@@ -115,7 +121,7 @@ class Server
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
             if ($this->usingIpProtocol || (strpos($errormsg, 'Address already in use') === false)) {
-                app('log')->error("Couldn't bind socket ($this->host): [$errorcode] $errormsg. ". $th->getMessage());
+                app('log')->error("Couldn't bind socket ($this->host): [$errorcode] $errormsg. " . $th->getMessage());
                 return false;
             } else {
                 unlink($this->host);
@@ -133,7 +139,7 @@ class Server
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
-            app('log')->error("Couldn't listen on socket: [$errorcode] $errormsg ");
+            app('log')->error("Couldn't listen on socket: [$errorcode] $errormsg. " . $th->getMessage());
             return false;
         }
     }
