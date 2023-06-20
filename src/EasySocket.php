@@ -63,7 +63,7 @@ class EasySocket
             }
             $counter++;
             $port++;
-        } while ((!$newPort || !$bindStatus) && $counter < ($portIsAnIPRange ? 3 : 1));
+        } while ((!$newPort || !$bindStatus) && $counter < ($portIsAnIPRange ? config('easySocket.ipRangeMax', 3) : 1));
         if (!$bindStatus) {
             return false;
         }

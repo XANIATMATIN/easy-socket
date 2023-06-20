@@ -79,7 +79,7 @@ class Client
             }
             $counter++;
             $port++;
-        } while (!$isConnected && $counter <= ($portIsAnIPRange ? 3 : 1));
+        } while (!$isConnected && $counter <= ($portIsAnIPRange ? config('easySocket.ipRangeMax', 3) : 1));
         return $this->isConnected = $isConnected;
     }
 
