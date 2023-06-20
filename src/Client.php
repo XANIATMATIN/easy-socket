@@ -2,6 +2,7 @@
 
 namespace MatinUtils\EasySocket;
 
+use Exception;
 
 class Client
 {
@@ -9,7 +10,7 @@ class Client
     protected $clientSockets = [];
     public $isConnected = false;
 
-    public function __construct(string $host, int $port = 0)
+    public function __construct(string $host, int|string $port = 0)
     {
         $this->host = $host;
         $this->port = $port;
@@ -41,16 +42,45 @@ class Client
 
     protected function connectSocket()
     {
+        if ($this->usingIpProtocol) return $this->connectThroughIPProtocol();
         try {
             $this->isConnected  = socket_connect($this->masterSocket, $this->host, $this->port);
-            // app('log')->info('Socket successfully connected to: ' . $this->host . (!empty($this->port) ? " on port $this->port" : ''));
+            if (($handshake = socket_read($this->masterSocket, 1024)) != "connected") {
+                throw new Exception("Handshake failed. Received $handshake", 1);
+            }
+            // app('log')->info("Socket successfully connected to: $this->host . $handshake");
             return $this->isConnected;
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
-            app('log')->error("Couldn't connect socket ($this->host): [$errorcode] $errormsg ");
-            return $this->isConnected  = false;
+            app('log')->error("Couldn't connect to socket on file ($this->host) [$errorcode] $errormsg ");
+            return $this->isConnected = false;
         }
+    }
+
+    protected function connectThroughIPProtocol()
+    {
+        $portIsAnIPRange = app('easy-socket')->portIsAnIPRange($this->port); ///> returns the range's starting ip or false
+        $port = $portIsAnIPRange ?? $this->port;
+        $counter = 1;
+        do {
+            $isConnected = $handshake = false;
+            try {
+                $isConnected = socket_connect($this->masterSocket, $this->host, $port);
+                if (($handshake = socket_read($this->masterSocket, 1024)) != "connected") {
+                    throw new Exception("Handshake failed. Received $handshake", 1);
+                }
+                // app('log')->info("Socket successfully connected to: $this->host on port $port. handshake: $handshake");
+            } catch (\Throwable $th) {
+                $errorcode = socket_last_error();
+                $errormsg = socket_strerror($errorcode);
+                app('log')->error($th->getMessage());
+                app('log')->error("Try #$counter ,Couldn't connect to socket ($this->host:$port) [$errorcode] $errormsg");
+            }
+            $counter++;
+            $port++;
+        } while (!$isConnected && $counter <= ($portIsAnIPRange ? 3 : 1));
+        return $this->isConnected = $isConnected;
     }
 
     public function closeSocket()
@@ -66,9 +96,8 @@ class Client
                 $errorcode = socket_last_error();
                 $errormsg = socket_strerror($errorcode);
                 app('log')->error("Can not write on socket : [$errorcode] $errormsg");
-                app('log')->error(__FILE__ . ':' . __LINE__);
                 app('log')->error($data);
-                Hooks::trigger('writeFailed', "Can not write on socket : [$errorcode] $errormsg", $data);
+                Hooks::trigger('writeFailed', "Can not write on socket ($this->host:$this->port): [$errorcode] $errormsg", $data);
                 $this->isConnected = false;
             }
             return $this->isConnected;
@@ -90,7 +119,7 @@ class Client
                 $stack .= $input;
             } while (($input[strlen($input) - 1] ?? "\0") != "\0");
         } catch (\Throwable $th) {
-            app('log')->error('can not read socket. ' . $th->getMessage());
+            app('log')->error("can not read socket ($this->host:$this->port). " . $th->getMessage());
         }
 
         $stack = $this->cleanData($stack);

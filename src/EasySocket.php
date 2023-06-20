@@ -77,4 +77,18 @@ class EasySocket
         }
         return $socket;
     }
+
+    /**
+     * checks if ip is a range
+     *
+     *
+     * @param  string|int|null,     $port    requested port
+     *
+     * @return int|false                     if not range, it returns false. if range it returns the range's starting ip
+     */
+    public function portIsAnIPRange(string $port = '')
+    {
+        if (empty($port)) return false;
+        return $port[strlen($port) - 1] === "*" ? str_replace('*', '', $port) :false;
+    }
 }
