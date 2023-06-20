@@ -10,6 +10,7 @@ class Consumer
     public function __construct($socket)
     {
         $this->socket = $socket;
+        socket_write($this->socket, "connected");
     }
 
     public function getSocket()

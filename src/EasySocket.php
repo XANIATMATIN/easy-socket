@@ -13,7 +13,7 @@ class EasySocket
     public function serveOnFile($portName)
     {
         $socketFolder = base_path(config('easySocket.filePath'));
-        app('log')->info("connecting through file $socketFolder/$portName.sock");
+        app('log')->info("Serving through file $socketFolder/$portName.sock");
         try {
             $newPort = socket_create(AF_UNIX, SOCK_STREAM, 0);
             socket_bind($newPort, "$socketFolder/$portName.sock");
@@ -46,17 +46,29 @@ class EasySocket
     public function serveOnPort($port)
     {
         $host = config('easySocket.host');
-        app('log')->info("connecting through ip $host:$port");
         if (empty($host) || empty($port)) {
-            app('log')->error("no host/port specified for socket connection");
+            app('log')->error("no host/port specified for socket connection $host:$port");
             return;
         }
-        try {
-            $newPort = socket_create(AF_INET, SOCK_STREAM, 0);
-            socket_bind($newPort, $host, $port);
-        } catch (\Throwable $th) {
-            app('log')->error($th->getMessage());
+        $portIsAnIPRange = $this->portIsAnIPRange($port);
+        $port = $portIsAnIPRange ?? $port;
+        $counter = 0;
+        do {
+            $newPort = $bindStatus = false;
+            try {
+                $newPort = socket_create(AF_INET, SOCK_STREAM, 0);
+                $bindStatus = socket_bind($newPort, $host, $port);
+            } catch (\Throwable $th) {
+                app('log')->error("Failed to Serve through ip $host:$port " . $th->getMessage());
+            }
+            $counter++;
+            $port++;
+        } while ((!$newPort || !$bindStatus) && $counter < ($portIsAnIPRange ? 3 : 1));
+        if (!$bindStatus) {
+            return false;
         }
+        $port--; ///> for log
+        app('log')->info("Served through ip $host:$port");
         socket_listen($newPort, 10);
         return $newPort;
     }

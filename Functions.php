@@ -2,7 +2,7 @@
 
 function serveAndListen(string $port)
 {
-    if (is_numeric($port)) {
+    if (is_numeric($port) || app('easy-socket')->portIsAnIPRange($port)) {
         return app('easy-socket')->serveOnPort($port);
     } else {
         return app('easy-socket')->serveOnFile($port);
