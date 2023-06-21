@@ -30,9 +30,7 @@ abstract class Base
                 return true;
             }
             $this->buffer .= $input;
-
-            $length = strlen($input);
-            if ($input[$length - 1] != "\0") {
+            if (!app('easy-socket')->messageIsCompelete($this->buffer)) {
                 return false;
             }
             return $this->compeleteSection();
@@ -68,19 +66,11 @@ abstract class Base
     protected function writeOnSocket($client, $message)
     {
         try {
-            $message = $this->prepareMessage($message);
+            $message = app('easy-socket')->prepareMessage($message);
             socket_write($client, $message);
         } catch (\Throwable $th) {
             throw $th;
         }
-    }
-
-    protected function prepareMessage($message)
-    {
-        if (($message[strlen($message) - 1] ?? '') != "\0") { ///> the message might already have /0
-            $message .= "\0";
-        }
-        return $message;
     }
 
     public function close()

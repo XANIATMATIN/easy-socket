@@ -6,7 +6,7 @@ use Exception;
 
 class Server
 {
-    protected $host, $port, $interval, $masterSocket, $maxClientNumber, $usingIpProtocol;
+    protected $host, $port, $interval, $masterSocket, $maxClientNumber, $usingIpProtocol, $read;
     protected $clients = [];
 
     public function __construct()
@@ -36,58 +36,15 @@ class Server
                 if ($this->socketListen()) {
                     ///> socket is now ready, waiting for connections
 
-
                     while (true) {
-                        ///> re-filling the read array with the existing sockets
-                        $read = [];
-                        $read[0] = $this->masterSocket;
-                        foreach ($this->clients as $client) {
-                            $read[] = $client->getSocket();
-                        }
+                        $this->makeReadArray();
 
                         ///> waiting for any action on the socket, whether it's new client connecting or an existing client sending sth
-                        try {
-                            socket_select($read, $write, $except, $this->interval);
-                        } catch (\Throwable $th) {
-                            $errorcode = socket_last_error();
-                            $errormsg = socket_strerror($errorcode);
-                            app('log')->error("Socket select failed : [$errorcode] $errormsg. " . $th->getMessage());
-                        }
+                        socket_select($this->read, $write, $except, $this->interval);
 
+                        $this->checkForNewClients();
 
-                        //if read contains the master socket, then a new connection has come in
-                        if (in_array($this->masterSocket, $read)) {
-                            if (count($this->clients) >= $this->maxClientNumber) {
-                                app('log')->error("New connection blocked. Max client capacity reached");
-                                ///> i accept then close the coonection, there are probably better ways
-                                $newClient = socket_accept($this->masterSocket);
-                                socket_close($newClient);
-                                continue;
-                            } else {
-                                $protocol = $this->protocolFactoty(config('easySocket.defaultProtocol', 'http'), socket_accept($this->masterSocket));
-                                $this->clients[] = $protocol;
-                                // Hooks::trigger('newClient', $protocol, count($this->clients));
-                            }
-                        }
-
-                        ///> receive clients' messages
-                        $queue = [];
-                        foreach ($this->clients as $index => $client) {
-                            if (in_array($client->getSocket(), $read)) {
-                                $queue[$index] = $client;
-                            }
-                        }
-
-                        do {
-                            foreach ($queue as $index => $client) {
-                                if ($client->read()) {
-                                    if (!$client->status()) {
-                                        unset($this->clients[$index]);
-                                    }
-                                    unset($queue[$index]);
-                                }
-                            }
-                        } while (!empty($queue));
+                        $this->receiveAndProcessClientMessage();
                     }
                     $this->closeSocket();
                 }
@@ -142,6 +99,47 @@ class Server
             app('log')->error("Couldn't listen on socket: [$errorcode] $errormsg. " . $th->getMessage());
             return false;
         }
+    }
+
+    protected function makeReadArray()
+    {
+        ///> re-filling the read array with the existing sockets
+        $this->read = [$this->masterSocket];
+        foreach ($this->clients as $clientConnection) {
+            $this->read[] = $clientConnection->getSocket();
+        }
+        return $this->read;
+    }
+
+    protected function checkForNewClients()
+    {
+        //if read contains the master socket, then a new connection has come in
+        if (in_array($this->masterSocket, $this->read)) {
+            $protocol = $this->protocolFactoty(config('easySocket.defaultProtocol', 'http'), socket_accept($this->masterSocket));
+            $this->clients[] = $protocol;
+            // Hooks::trigger('newClient', $protocol, count($this->clients));
+        }
+    }
+
+    protected function receiveAndProcessClientMessage()
+    {
+        $queue = [];
+        foreach ($this->clients as $index => $client) {
+            if (in_array($client->getSocket(), $this->read)) {
+                $queue[$index] = $client;
+            }
+        }
+
+        do {
+            foreach ($queue as $index => $client) {
+                if ($client->read()) {
+                    if (!$client->status()) {
+                        unset($this->clients[$index]);
+                    }
+                    unset($queue[$index]);
+                }
+            }
+        } while (!empty($queue));
     }
 
     public function registerStaticHooks()

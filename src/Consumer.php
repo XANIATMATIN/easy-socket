@@ -5,6 +5,8 @@ namespace MatinUtils\EasySocket;
 
 class Consumer
 {
+    ///> This class is used when Process Manager receives a new client,
+    ///> will move to another package (pm connector)
     protected $status = true, $socket, $continuous = false, $buffer = '', $temp = '';
 
     public function __construct($socket)
@@ -22,22 +24,17 @@ class Consumer
     {
         try {
             $input = socket_read($this->socket, 2048);
-            if (empty($input)) {
+            if (empty($input)) { ///> means the client is disconnected
                 $this->close();
                 return false;
             }
             $this->buffer .= $input;
-
             $length = strlen($input);
             if ($input[$length - 1] != "\0") {
                 return false;
             }
             $data = $this->buffer;
             $this->buffer = '';
-            if ($this->buffer == 'idle' . "\0" . 'idle') {
-                app('log')->info($input);
-                app('log')->info($this->temp);
-            }
             return $data;
         } catch (\Throwable $th) {
             app('log')->error('Socket Read Has Error. ' . $th->getMessage());
@@ -48,21 +45,13 @@ class Consumer
 
     public function writeOnSocket($message)
     {
-        $message = $this->prepareMessage($message);
+        $message = app('easy-socket')->prepareMessage($message);
         $this->temp = $message;
         try {
             socket_write($this->socket, $message);
         } catch (\Throwable $th) {
             throw $th;
         }
-    }
-
-    protected function prepareMessage($message)
-    {
-        if (($message[strlen($message) - 1] ?? '') != "\0") { ///> the message might already have /0
-            $message .= "\0";
-        }
-        return $message;
     }
 
     public function close()

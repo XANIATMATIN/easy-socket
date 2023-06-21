@@ -92,8 +92,6 @@ class EasySocket
 
     /**
      * checks if ip is a range
-     *
-     *
      * @param  string|int|null,     $port    requested port
      *
      * @return int|false                     if not range, it returns false. if range it returns the range's starting ip
@@ -101,6 +99,46 @@ class EasySocket
     public function portIsAnIPRange(string $port = '')
     {
         if (empty($port)) return false;
-        return $port[strlen($port) - 1] === "*" ? str_replace('*', '', $port) :false;
+        return $port[strlen($port) - 1] === "*" ? str_replace('*', '', $port) : false;
+    }
+
+    /**
+     * Removes the "\0" at the end of the message, if exists
+     * @param  string|null     $input       Message received from socket
+     *
+     * @return   string                     Message without "\0" at the end
+     */
+    public function cleanData(string|null $input = '')
+    {
+        $length = strlen($input);
+        if (($input[$length - 1] ?? "") == "\0") {
+            $input = substr($input, 0, -1);
+        }
+        return $input;
+    }
+
+    /**
+     * Adds "\0" at the end of the message, if doesn't exists
+     * @param    string     $message       Message that is going to be sent to socket
+     *
+     * @return   string                    Message with "\0" at the end
+     */
+    public function prepareMessage(string $message)
+    {
+        if (($message[strlen($message) - 1] ?? '') != "\0") { ///> the message might already have /0
+            $message .= "\0";
+        }
+        return $message;
+    }
+
+    /**
+     * checks if Message is compeleted
+     * @param    string     $message       Message received from socket
+     *
+     * @return   bool                    
+     */
+    public function messageIsCompelete(string $message)
+    {
+        return $message[strlen($message) - 1] == "\0";
     }
 }

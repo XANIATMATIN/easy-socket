@@ -44,18 +44,19 @@ class Client
     {
         if ($this->usingIpProtocol) return $this->connectThroughIPProtocol();
         try {
-            $this->isConnected  = socket_connect($this->masterSocket, $this->host, $this->port);
-            if (($handshake = socket_read($this->masterSocket, 1024)) != "connected") {
-                throw new Exception("Handshake failed. Received $handshake", 1);
+            $startConnection = $this->startConnection(0);
+            $this->isConnected = $startConnection['status'];
+            if (!$this->isConnected) {
+                app('log')->error("Couldn't connect to socket file ($this->host) - {$startConnection['message']}");
             }
             // app('log')->info("Socket successfully connected to: $this->host . $handshake");
-            return $this->isConnected;
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
             app('log')->error("Couldn't connect to socket on file ($this->host) [$errorcode] $errormsg ");
-            return $this->isConnected = false;
+            $this->isConnected = false;
         }
+        return $this->isConnected;
     }
 
     protected function connectThroughIPProtocol()
@@ -66,9 +67,10 @@ class Client
         do {
             $isConnected = $handshake = false;
             try {
-                $isConnected = socket_connect($this->masterSocket, $this->host, $port);
-                if (($handshake = socket_read($this->masterSocket, 1024)) != "connected") {
-                    throw new Exception("Handshake failed. Received $handshake", 1);
+                $startConnection = $this->startConnection($port);
+                $isConnected = $startConnection['status'];
+                if (!$isConnected) {
+                    app('log')->error("Try #$counter ,Couldn't connect to socket ($this->host:$port) - {$startConnection['message']}");
                 }
                 // app('log')->info("Socket successfully connected to: $this->host on port $port. handshake: $handshake");
             } catch (\Throwable $th) {
@@ -81,6 +83,19 @@ class Client
             $port++;
         } while (!$isConnected && $counter <= ($portIsAnIPRange ? config('easySocket.ipRangeMax', 3) : 1));
         return $this->isConnected = $isConnected;
+    }
+
+    protected function startConnection($port)
+    {
+        $isConnected = socket_connect($this->masterSocket, $this->host, $port);
+        if (!$isConnected) {
+            $errorcode = socket_last_error();
+            $errormsg = socket_strerror($errorcode);
+            return ['status' => false, 'message' => "socket_connect failed. [$errorcode] $errormsg"];
+        }
+        $handshake = socket_read($this->masterSocket, 1024);
+        if ($handshake != "connected") return ['status' => false, 'message' => "handshake failed. received $handshake"];
+        return ['status' => true];
     }
 
     public function closeSocket()
@@ -122,16 +137,7 @@ class Client
             app('log')->error("can not read socket ($this->host:$this->port). " . $th->getMessage());
         }
 
-        $stack = $this->cleanData($stack);
+        $stack = app('easy-socket')->cleanData($stack);
         return $stack ?? '';
-    }
-
-    protected function cleanData($input)
-    {
-        $length = strlen($input);
-        if (($input[$length - 1] ?? "") == "\0") {
-            $input = substr($input, 0, -1);
-        }
-        return $input;
     }
 }
