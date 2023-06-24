@@ -50,8 +50,8 @@ class EasySocket
             app('log')->error("no host/port specified for socket connection $host:$port");
             return;
         }
-        $portIsAnIPRange = $this->portIsAnIPRange($port);
-        $port = $portIsAnIPRange ?? $port;
+        $getPrtRange = $this->getPrtRange($port);
+        $port = $getPrtRange ?? $port;
         $counter = 0;
         do {
             $newPort = $bindStatus = false;
@@ -63,7 +63,7 @@ class EasySocket
             }
             $counter++;
             $port++;
-        } while ((!$newPort || !$bindStatus) && $counter < ($portIsAnIPRange ? config('easySocket.ipRangeMax', 3) : 1));
+        } while ((!$newPort || !$bindStatus) && $counter < ($getPrtRange ? config('easySocket.ipRangeMax', 3) : 1));
         if (!$bindStatus) {
             return false;
         }
@@ -91,15 +91,16 @@ class EasySocket
     }
 
     /**
-     * checks if ip is a range
+     * Checks if ip is a range
      * @param  string|int|null,     $port    requested port
      *
      * @return int|false                     if not range, it returns false. if range it returns the range's starting ip
      */
-    public function portIsAnIPRange(string $port = '')
+    public function getPrtRange(string $port = '')
     {
-        if (empty($port)) return false;
-        return $port[strlen($port) - 1] === "*" ? str_replace('*', '', $port) : false;
+        if (empty($port) || !str_contains($port, ':')) return false;
+        $range = explode(':', $port);
+        return $range;
     }
 
     /**

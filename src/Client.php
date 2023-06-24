@@ -61,11 +61,12 @@ class Client
 
     protected function connectThroughIPProtocol()
     {
-        $portIsAnIPRange = app('easy-socket')->portIsAnIPRange($this->port); ///> returns the range's starting ip or false
-        $port = $portIsAnIPRange ?? $this->port;
+        $getPrtRange = app('easy-socket')->getPrtRange($this->port); ///> returns the range's starting ip or false
+        $port = $getPrtRange[0];
+        $endPort = $getPrtRange[1] ?? $port; ///> there might be no range (no ':')
         $counter = 1;
         do {
-            $isConnected = $handshake = false;
+            $isConnected = false;
             try {
                 $startConnection = $this->startConnection($port);
                 $isConnected = $startConnection['status'];
@@ -81,7 +82,7 @@ class Client
             }
             $counter++;
             $port++;
-        } while (!$isConnected && $counter <= ($portIsAnIPRange ? config('easySocket.ipRangeMax', 3) : 1));
+        } while (!$isConnected && $counter <= $endPort);
         return $this->isConnected = $isConnected;
     }
 
