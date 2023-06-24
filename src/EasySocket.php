@@ -50,27 +50,28 @@ class EasySocket
             app('log')->error("no host/port specified for socket connection $host:$port");
             return;
         }
-        $getPrtRange = $this->getPrtRange($port);
-        $port = $getPrtRange ?? $port;
+        $getPrtRange = app('easy-socket')->getPrtRange($port); ///> returns the range's starting and ending, or false
+        $port = $getPrtRange[0];
+        $endPort = $getPrtRange[1] ?? $port; ///> there might be no range (no ':')
         $counter = 0;
         do {
-            $newPort = $bindStatus = false;
+            $newSocket = $bindStatus = false;
             try {
-                $newPort = socket_create(AF_INET, SOCK_STREAM, 0);
-                $bindStatus = socket_bind($newPort, $host, $port);
+                $newSocket = socket_create(AF_INET, SOCK_STREAM, 0);
+                $bindStatus = socket_bind($newSocket, $host, $port);
             } catch (\Throwable $th) {
                 app('log')->error("Failed to Serve through ip $host:$port " . $th->getMessage());
             }
             $counter++;
             $port++;
-        } while ((!$newPort || !$bindStatus) && $counter < ($getPrtRange ? config('easySocket.ipRangeMax', 3) : 1));
+        } while ((!$newSocket || !$bindStatus) && $counter <= $endPort);
         if (!$bindStatus) {
             return false;
         }
         $port--; ///> for log
         app('log')->info("Served through ip $host:$port");
-        socket_listen($newPort, 10);
-        return $newPort;
+        socket_listen($newSocket, 10);
+        return $newSocket;
     }
 
     public function connectToPort($port)

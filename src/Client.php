@@ -61,7 +61,7 @@ class Client
 
     protected function connectThroughIPProtocol()
     {
-        $getPrtRange = app('easy-socket')->getPrtRange($this->port); ///> returns the range's starting ip or false
+        $getPrtRange = app('easy-socket')->getPrtRange($this->port); ///> returns the range's starting and ending, or false
         $port = $getPrtRange[0];
         $endPort = $getPrtRange[1] ?? $port; ///> there might be no range (no ':')
         $counter = 1;
