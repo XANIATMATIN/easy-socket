@@ -53,7 +53,6 @@ class EasySocket
         $getPrtRange = app('easy-socket')->getPrtRange($port); ///> returns the range's starting and ending, or false
         $port = $getPrtRange[0];
         $endPort = $getPrtRange[1] ?? $port; ///> there might be no range (no ':')
-        $counter = 0;
         do {
             $newSocket = $bindStatus = false;
             try {
@@ -62,9 +61,8 @@ class EasySocket
             } catch (\Throwable $th) {
                 app('log')->error("Failed to Serve through ip $host:$port " . $th->getMessage());
             }
-            $counter++;
             $port++;
-        } while ((!$newSocket || !$bindStatus) && $counter <= $endPort);
+        } while ((!$newSocket || !$bindStatus) && $port <= $endPort);
         if (!$bindStatus) {
             return false;
         }

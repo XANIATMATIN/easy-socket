@@ -82,7 +82,7 @@ class Client
             }
             $counter++;
             $port++;
-        } while (!$isConnected && $counter <= $endPort);
+        } while (!$isConnected && $port <= $endPort);
         return $this->isConnected = $isConnected;
     }
 
@@ -108,6 +108,7 @@ class Client
     protected function writeOnSocket($data)
     {
         try {
+            // app('log')->info($data);
             if (!socket_write($this->masterSocket, $data, strlen($data))) {
                 $errorcode = socket_last_error();
                 $errormsg = socket_strerror($errorcode);
