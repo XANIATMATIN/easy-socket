@@ -10,6 +10,7 @@ abstract class Base
     public function __construct($socket)
     {
         $this->socket = $socket;
+        socket_write($this->socket, "connected"); ///> handshake happens both in here and in the Consumer class
         $this->routing = $this->getRouter();
     }
     public abstract function getRouter(): Router;
