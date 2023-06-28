@@ -139,6 +139,6 @@ class EasySocket
      */
     public function messageIsCompelete(string $message)
     {
-        return $message[strlen($message) - 1] == "\0";
+        return ($message[strlen($message) - 1] ?? "\0")== "\0";
     }
 }

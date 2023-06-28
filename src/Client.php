@@ -117,7 +117,6 @@ class Client
                 Hooks::trigger('writeFailed', "Can not write on socket ($this->host:$this->port): [$errorcode] $errormsg", $data);
                 $this->isConnected = false;
             }
-            return $this->isConnected;
         } catch (\Throwable $th) {
             $this->isConnected = false;
             app('log')->error("Can not write on socket : " . $th->getMessage());
@@ -125,6 +124,7 @@ class Client
             app('log')->error($data);
             Hooks::trigger('writeFailed', "Can not write on socket : " . $th->getMessage(), $data);
         }
+        return $this->isConnected;
     }
 
     protected function readSocket()
@@ -134,7 +134,7 @@ class Client
             do {
                 $input = socket_read($this->masterSocket, 1024);
                 $stack .= $input;
-            } while (($input[strlen($input) - 1] ?? "\0") != "\0");
+            } while (!app('easy-socket')->messageIsCompelete($input));
         } catch (\Throwable $th) {
             app('log')->error("can not read socket ($this->host:$this->port). " . $th->getMessage());
         }
