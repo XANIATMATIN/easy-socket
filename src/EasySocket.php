@@ -4,6 +4,7 @@ namespace MatinUtils\EasySocket;
 
 class EasySocket
 {
+    protected $messageEndingFlag = "\0";
     public function serve()
     {
         $server = new Server();
@@ -103,30 +104,30 @@ class EasySocket
     }
 
     /**
-     * Removes the "\0" at the end of the message, if exists
+     * Removes the messageEndingFlag at the end of the message, if exists
      * @param  string|null     $input       Message received from socket
      *
-     * @return   string                     Message without "\0" at the end
+     * @return   string                     Message without messageEndingFlag at the end
      */
     public function cleanData(string|null $input = '')
     {
         $length = strlen($input);
-        if (($input[$length - 1] ?? "") == "\0") {
+        if (($input[$length - 1] ?? "") == $this->messageEndingFlag) {
             $input = substr($input, 0, -1);
         }
         return $input;
     }
 
     /**
-     * Adds "\0" at the end of the message, if doesn't exists
+     * Adds messageEndingFlag at the end of the message, if doesn't exists
      * @param    string     $message       Message that is going to be sent to socket
      *
-     * @return   string                    Message with "\0" at the end
+     * @return   string                    Message with messageEndingFlag at the end
      */
     public function prepareMessage(string $message)
     {
-        if (($message[strlen($message) - 1] ?? '') != "\0") { ///> the message might already have /0
-            $message .= "\0";
+        if (($message[strlen($message) - 1] ?? '') != $this->messageEndingFlag) { ///> the message might already have /0
+            $message .= $this->messageEndingFlag;
         }
         return $message;
     }
@@ -139,6 +140,17 @@ class EasySocket
      */
     public function messageIsCompelete(string $message)
     {
-        return ($message[strlen($message) - 1] ?? "\0")== "\0";
+        return ($message[strlen($message) - 1] ?? $this->messageEndingFlag) == $this->messageEndingFlag;
+    }
+
+    /**
+     * Seperate the messages that are attached to eachother (happens when client send multiple messages at the same tiime)
+     * @param    string     $message       Message received from socket
+     *
+     * @return   bool                    
+     */
+    public function seperateMessageGroup(string $message = '')
+    {
+        return array_filter(explode($this->messageEndingFlag, $message));
     }
 }
