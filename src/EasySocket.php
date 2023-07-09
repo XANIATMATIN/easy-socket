@@ -147,7 +147,7 @@ class EasySocket
      * Seperate the messages that are attached to eachother (happens when client send multiple messages at the same tiime)
      * @param    string     $message       Message received from socket
      *
-     * @return   bool                    
+     * @return   array                    
      */
     public function seperateMessageGroup(string $message = '')
     {
