@@ -11,94 +11,28 @@ class Server
 
     public function __construct()
     {
-        $port = config('easySocket.port', 0);
-        $this->usingIpProtocol = !empty($port) && is_numeric($port);
-        if ($this->usingIpProtocol) {
-            $this->host = config('easySocket.host', '127.0.0.1');
-            $this->port = $port;
-        } else {
-            $this->host = base_path(config('easySocket.filePath', "bootstrap/easySocket")) . "/$port.sock";
-            $this->port = 0;
-        }
         $this->interval = config('easySocket.interval', null);
         $this->maxClientNumber = config('easySocket.maxClientNumber', SOMAXCONN);
-
+        $this->masterSocket = serveAndListen(config('easySocket.port', 'client'));
         $this->registerStaticHooks();
-
         error_reporting(~E_NOTICE);
         set_time_limit(0);
     }
 
     public function handle()
     {
-        if ($this->createSocket()) {
-            if ($this->bindSocket()) {
-                if ($this->socketListen()) {
-                    ///> socket is now ready, waiting for connections
+        ///> socket is now ready, waiting for connections
+        while (true) {
+            $this->makeReadArray();
 
-                    while (true) {
-                        $this->makeReadArray();
+            ///> waiting for any action on the socket, whether it's new client connecting or an existing client sending sth
+            socket_select($this->read, $write, $except, $this->interval);
 
-                        ///> waiting for any action on the socket, whether it's new client connecting or an existing client sending sth
-                        socket_select($this->read, $write, $except, $this->interval);
+            $this->checkForNewClients();
 
-                        $this->checkForNewClients();
-
-                        $this->receiveAndProcessClientMessage();
-                    }
-                    $this->closeSocket();
-                }
-            }
+            $this->receiveAndProcessClientMessage();
         }
-    }
-
-    protected function createSocket()
-    {
-        try {
-            $domain = $this->usingIpProtocol ? AF_INET : AF_UNIX;
-            $this->masterSocket = socket_create($domain, SOCK_STREAM, 0);
-            return true;
-        } catch (\Throwable $th) {
-            $errorcode = socket_last_error();
-            $errormsg = socket_strerror($errorcode);
-            app('log')->error("Couldn't create socket: [$errorcode] $errormsg ");
-            return false;
-        }
-    }
-
-    protected function bindSocket()
-    {
-        try {
-            socket_bind($this->masterSocket, $this->host, $this->port);
-            if (!$this->usingIpProtocol) {
-                chmod($this->host, 0777);
-            }
-            app('log')->info('Socket successfully binded to: ' . $this->host . ($this->usingIpProtocol ? " on port $this->port" : ''));
-        } catch (\Throwable $th) {
-            $errorcode = socket_last_error();
-            $errormsg = socket_strerror($errorcode);
-            if ($this->usingIpProtocol || (strpos($errormsg, 'Address already in use') === false)) {
-                app('log')->error("Couldn't bind socket ($this->host): [$errorcode] $errormsg. " . $th->getMessage());
-                return false;
-            } else {
-                unlink($this->host);
-                $this->bindSocket();
-            }
-        }
-        return true;
-    }
-
-    protected function socketListen()
-    {
-        try {
-            socket_listen($this->masterSocket, 10);
-            return true;
-        } catch (\Throwable $th) {
-            $errorcode = socket_last_error();
-            $errormsg = socket_strerror($errorcode);
-            app('log')->error("Couldn't listen on socket: [$errorcode] $errormsg. " . $th->getMessage());
-            return false;
-        }
+        $this->closeSocket();
     }
 
     protected function makeReadArray()
