@@ -91,6 +91,17 @@ class EasySocket
     }
 
     /**
+     * Sets the read timeout for a socket
+     * @param     $socket       The socket in use
+     * @param     $time         timeout in seconds, if 0 it will be limitless
+     *                  
+     */
+    public function setReadTimeOut($socket, int $time = null)
+    {
+        socket_set_option($socket, SOL_SOCKET, SO_RCVTIMEO, array('sec' => $time, 'usec' => 0));
+    }
+
+    /**
      * Checks if ip is a range
      * @param  string|int|null,     $port    requested port
      *
