@@ -17,27 +17,9 @@ class Client
         $this->usingIpProtocol = !empty($this->port);
 
         if (!$this->isConnected) {
-            if ($this->createSocket()) {
-                $this->connectSocket();
-            }
+            $this->connectSocket();
         }
-    }
-
-    protected function createSocket()
-    {
         error_reporting(~E_NOTICE);
-        set_time_limit(0);
-        try {
-            $domain = $this->usingIpProtocol ? AF_INET : AF_UNIX;
-            $this->masterSocket = socket_create($domain, SOCK_STREAM, 0);
-            // app('log')->info('Created Socket');
-            return true;
-        } catch (\Throwable $th) {
-            $errorcode = socket_last_error();
-            $errormsg = socket_strerror($errorcode);
-            app('log')->error("Couldn't create socket: [$errorcode] $errormsg ");
-            return $this->isConnected  = false;
-        }
     }
 
     protected function connectSocket()
@@ -88,15 +70,39 @@ class Client
 
     protected function startConnection($port)
     {
-        $isConnected = socket_connect($this->masterSocket, $this->host, $port);
-        if (!$isConnected) {
+        if ($this->createSocket()) {
+            $isConnected = socket_connect($this->masterSocket, $this->host, $port);
+            if (!$isConnected) {
+                $errorcode = socket_last_error();
+                $errormsg = socket_strerror($errorcode);
+                return ['status' => false, 'message' => "socket_connect failed. [$errorcode] $errormsg"];
+            }
+            app('easy-socket')->setReadTimeOut($this->masterSocket, 1);
+            $handshake = socket_read($this->masterSocket, 1024);
+            app('easy-socket')->setReadTimeOut($this->masterSocket, 10);
+            if ($handshake != "connected") {
+                socket_close($this->masterSocket);
+                return ['status' => false, 'message' => "handshake failed. received $handshake"];
+            }
+            return ['status' => true];
+        }
+        return ['status' => false, 'message' => "Could not create socket"];
+    }
+
+    protected function createSocket()
+    {
+        $this->masterSocket = null;
+        try {
+            $domain = $this->usingIpProtocol ? AF_INET : AF_UNIX;
+            $this->masterSocket = socket_create($domain, SOCK_STREAM, 0);
+            // app('log')->info('Created Socket');
+            return true;
+        } catch (\Throwable $th) {
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
-            return ['status' => false, 'message' => "socket_connect failed. [$errorcode] $errormsg"];
+            app('log')->error("Couldn't create socket: [$errorcode] $errormsg ");
+            return $this->isConnected  = false;
         }
-        $handshake = socket_read($this->masterSocket, 1024);
-        if ($handshake != "connected") return ['status' => false, 'message' => "handshake failed. received $handshake"];
-        return ['status' => true];
     }
 
     public function closeSocket()
