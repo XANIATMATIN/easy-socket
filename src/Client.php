@@ -79,7 +79,7 @@ class Client
             }
             app('easy-socket')->setReadTimeOut($this->masterSocket, 1);
             $handshake = socket_read($this->masterSocket, 1024);
-            app('easy-socket')->setReadTimeOut($this->masterSocket, 10);
+            app('easy-socket')->setReadTimeOut($this->masterSocket, 0);
             if ($handshake != "connected") {
                 socket_close($this->masterSocket);
                 return ['status' => false, 'message' => "handshake failed. received $handshake"];
