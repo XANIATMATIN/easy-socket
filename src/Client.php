@@ -114,21 +114,19 @@ class Client
     protected function writeOnSocket($data)
     {
         try {
-            // app('log')->info($data);
             if (!socket_write($this->masterSocket, $data, strlen($data))) {
                 $errorcode = socket_last_error();
                 $errormsg = socket_strerror($errorcode);
-                app('log')->error("Can not write on socket : [$errorcode] $errormsg");
+                app('log')->error("Can not write on socket ($this->host:$this->port): [$errorcode] $errormsg");
                 app('log')->error($data);
                 Hooks::trigger('writeFailed', "Can not write on socket ($this->host:$this->port): [$errorcode] $errormsg", $data);
                 $this->isConnected = false;
             }
         } catch (\Throwable $th) {
             $this->isConnected = false;
-            app('log')->error("Can not write on socket : " . $th->getMessage());
-            app('log')->error(__FILE__ . ':' . __LINE__);
+            app('log')->error("socket_write exception ($this->host:$this->port): " . $th->getMessage());
             app('log')->error($data);
-            Hooks::trigger('writeFailed', "Can not write on socket : " . $th->getMessage(), $data);
+            Hooks::trigger('socket_write exception,($this->host:$this->port)', "ocket_write exception ($this->host:$this->port): " . $th->getMessage(), $data);
         }
         return $this->isConnected;
     }
