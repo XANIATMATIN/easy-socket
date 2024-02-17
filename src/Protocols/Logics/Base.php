@@ -60,7 +60,9 @@ abstract class Base
 
             return true;
         } catch (\Throwable $th) {
-            throw $th;
+            app('log')->error('Base Socket Read Has Error. ' . $th->getMessage());
+            app('log')->error($th->getTraceAsString());
+            return true;
         }
     }
 
@@ -70,7 +72,7 @@ abstract class Base
             $message = app('easy-socket')->prepareMessage($message);
             socket_write($client, $message);
         } catch (\Throwable $th) {
-            throw $th;
+            app('log')->error('Base writeOnSocket Has Error. ' . $th->getMessage());
         }
     }
 

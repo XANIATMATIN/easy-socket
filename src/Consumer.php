@@ -37,7 +37,7 @@ class Consumer
             $this->buffer = '';
             return $data;
         } catch (\Throwable $th) {
-            app('log')->error('Socket Read Has Error. ' . $th->getMessage());
+            app('log')->error('Consumer Socket Read Has Error. ' . $th->getMessage());
             app('log')->error($th->getTraceAsString());
             return true;
         }
@@ -50,7 +50,7 @@ class Consumer
         try {
             socket_write($this->socket, $message);
         } catch (\Throwable $th) {
-            throw $th;
+            app('log')->error('Consumer writeOnSocket Has Error. ' . $th->getMessage());
         }
     }
 
