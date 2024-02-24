@@ -10,7 +10,11 @@ abstract class Base
     public function __construct($socket)
     {
         $this->socket = $socket;
-        socket_write($this->socket, "connected"); ///> handshake happens both in here and in the Consumer class
+        try {
+            socket_write($this->socket, "connected"); ///> handshake happens both in here and in the Consumer class
+        } catch (\Throwable $th) {
+            app('log')->error('Base writeOnSocket Has Error. ' . $th->getMessage());
+        }
         $this->routing = $this->getRouter();
     }
     public abstract function getRouter(): Router;

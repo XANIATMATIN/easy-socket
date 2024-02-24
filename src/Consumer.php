@@ -7,12 +7,17 @@ class Consumer
 {
     ///> This class is used when Process Manager receives a new client,
     ///> will move to another package (pm connector)
-    protected $status = true, $socket, $continuous = false, $buffer = '', $temp = '';
+    protected $status = true, $socket, $continuous = false, $responseReceived = false, $buffer = '', $temp = '';
 
     public function __construct($socket)
     {
         $this->socket = $socket;
-        socket_write($this->socket, "connected");
+        try {
+            socket_write($this->socket, "connected"); ///> handshake
+        } catch (\Throwable $th) {
+            app('log')->error('Consumer handshake Failed. ' . $th->getMessage());
+            $this->status = false;
+        }
     }
 
     public function getSocket()
@@ -63,5 +68,20 @@ class Consumer
     public function status()
     {
         return $this->status;
+    }
+
+    public function responseReceived()
+    {
+        return $this->responseReceived = true;
+    }
+
+    public function waitingForResponse()
+    {
+        return $this->responseReceived = false;
+    }
+
+    public function isWaitingForResponse()
+    {
+        return !$this->responseReceived;
     }
 }
