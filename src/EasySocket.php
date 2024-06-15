@@ -60,7 +60,17 @@ class EasySocket
                 $newSocket = socket_create(AF_INET, SOCK_STREAM, 0);
                 $bindStatus = socket_bind($newSocket, $host, $port);
             } catch (\Throwable $th) {
-                app('log')->error("Failed to Serve through ip $host:$port " . $th->getMessage());
+                if (strstr($th->getMessage(), 'Address already in use')) {
+                    try {
+                        shell_exec(" echo \"987321654\" | sudo fuser -k $port/tcp");
+                        $newSocket = socket_create(AF_INET, SOCK_STREAM, 0);
+                        $bindStatus = socket_bind($newSocket, $host, $port);
+                    } catch (\Throwable $th) {
+                        app('log')->error("Failed to kill port $port " . $th->getMessage());
+                    }
+                } else {
+                    app('log')->error("Failed to Serve through ip $host:$port " . $th->getMessage());
+                }
             }
             $port++;
         } while ((!$newSocket || !$bindStatus) && $port <= $endPort);
