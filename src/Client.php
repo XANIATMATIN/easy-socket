@@ -31,7 +31,7 @@ class Client
             if (!$this->isConnected) {
                 app('log')->error("Couldn't connect to socket file ($this->host) - {$startConnection['message']}");
             }
-            // app('log')->info("Socket successfully connected to: $this->host . $handshake");
+            // app('log')->info("Socket successfully connected to : $this->host ");
         } catch (\Throwable $th) {
             $errorcode = socket_last_error();
             $errormsg = socket_strerror($errorcode);
