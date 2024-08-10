@@ -14,7 +14,7 @@ class EasySocket
     public function serveOnFile($portName)
     {
         $socketFolder = base_path(config('easySocket.filePath'));
-        app('log')->info("Serving through file $socketFolder/$portName.sock");
+        app('log')->info("Serving through file: $socketFolder/$portName.sock");
         try {
             $newPort = socket_create(AF_UNIX, SOCK_STREAM, 0);
             socket_bind($newPort, "$socketFolder/$portName.sock");
