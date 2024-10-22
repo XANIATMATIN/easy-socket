@@ -15,5 +15,6 @@ function connectToSocket(string $port)
         return app('easy-socket')->connectToPort($port);
     } else {
         return app('easy-socket')->connectToFile($port);
+        
     }
 }
